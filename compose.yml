@@ -1,42 +1,54 @@
+# =========================================================================
+#  Orquestación de Contenedores de la Clínica (compose.yml)
+#  Ejecución: docker compose up --build
+# =========================================================================
+
 services:
+  
+  # 1. Servicio de Base de Datos PostgreSQL
   db:
-    image: postgres:16-alpine
-    container_name: clinica_db
+    image: postgres:16-alpine # Imagen oficial súper liviana de PostgreSQL versión 16
+    container_name: clinica_db # Nombre con el que se identificará el contenedor de base de datos
     environment:
-      POSTGRES_DB: clinica_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: clinica_db # Crea automáticamente la base de datos "clinica_db" al arrancar
+      POSTGRES_USER: postgres # Nombre del superusuario administrador
+      POSTGRES_PASSWORD: adminpassword # Contraseña del superusuario
     ports:
-      - "5432:5432"
+      - "5432:5432" # Redirecciona el puerto 5432 del contenedor al 5432 físico de tu PC
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data # Persistencia de datos local para no perder tus registros al apagar Docker
     healthcheck:
+      # Valida que Postgres esté totalmente encendido y aceptando conexiones antes de levantar la API.
+      # Esto evita que la API de Spring Boot falle en el arranque al no poder conectarse a una base de datos a medio inicializar.
       test: ["CMD-SHELL", "pg_isready -U postgres -d clinica_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # 2. Servicio del Backend (API Spring Boot)
   api:
-    build: .
-    container_name: clinica_api
+    build: . # Compila y construye la imagen a partir del Dockerfile de la raíz del proyecto
+    container_name: clinica_api # Nombre del contenedor del backend
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: docker # Activa el perfil de configuración 'docker' definido en application.yml
     ports:
-      - "8080:8080"
+      - "8080:8080" # Expone el puerto 8080 de Tomcat al puerto 8080 de tu máquina para recibir peticiones de Postman
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_healthy # Espera hasta que el healthcheck de base de datos reporte que está activa y sana
 
+  # 3. Servicio de Administrador Gráfico de Base de Datos (pgAdmin)
   pgadmin:
-    image: dpage/pgadmin4
-    container_name: clinica_pgadmin
+    image: dpage/pgadmin4 # Imagen oficial del administrador web pgAdmin 4
+    container_name: clinica_pgadmin # Nombre del contenedor de pgAdmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@examen.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: admin@examen.com # Email de inicio de sesión de la consola web
+      PGADMIN_DEFAULT_PASSWORD: admin # Contraseña de la consola web
     ports:
-      - "8082:80"
+      - "8082:80" # Mapea la consola web de administración al puerto 8082 de tu navegador (http://localhost:8082)
     depends_on:
-      - db
+      - db # Levantar solo después de que el servicio de base de datos esté corriendo
 
+# Declaración de los volúmenes persistentes
 volumes:
   postgres_data:

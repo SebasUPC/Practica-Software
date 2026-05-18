@@ -1,34 +1,54 @@
+# =========================================================================
+#  Configuración Global de Spring Boot (application.yml)
+# =========================================================================
+
 spring:
   application:
-    name: clinica-api
+    name: clinica-api # Nombre que identifica a este microservicio/aplicación
   profiles:
+    # Perfil activo por defecto si no se especifica otra variable de entorno.
+    # En desarrollo local usamos 'local', en producción o Docker usamos 'docker'.
     active: ${SPRING_PROFILES_ACTIVE:local}
   jpa:
     hibernate:
+      # ddl-auto: update
+      # Hibernate analiza tus clases @Entity y crea o actualiza las tablas SQL en PostgreSQL de forma automática.
+      # Para desarrollo de examen esto es genial, porque no tienes que escribir scripts CREATE TABLE manuales.
       ddl-auto: update
-    show-sql: true
+    show-sql: true # Imprime en la consola de comandos de Spring todos los SQL reales que Hibernate genera. ¡Excelente para depurar!
     properties:
       hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true # Formatea el SQL en la consola de forma estructurada para que sea legible.
+        dialect: org.hibernate.dialect.PostgreSQLDialect # Indica a Hibernate qué sintaxis de base de datos específica debe utilizar (PostgreSQL).
 
 server:
-  port: 8080
+  port: 8080 # Puerto HTTP por el cual el servidor embebido Tomcat escuchará las llamadas de Postman.
+
 ---
+# =========================================================================
+#  Perfil: LOCAL (Ejecución directa desde el IDE / computadora)
+# =========================================================================
 spring:
   config:
     activate:
-      on-profile: local
+      on-profile: local # Se activa cuando el perfil activo de arriba es 'local'
   datasource:
+    # URL de conexión local. Asume que tienes PostgreSQL corriendo en localhost:5432
     url: ${DB_URL:jdbc:postgresql://localhost:5432/clinica_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+
 ---
+# =========================================================================
+#  Perfil: DOCKER (Ejecución dentro de la red de contenedores)
+# =========================================================================
 spring:
   config:
     activate:
-      on-profile: docker
+      on-profile: docker # Se activa cuando levantamos el proyecto usando docker-compose
   datasource:
+    # URL de conexión interna para Docker.
+    # Nota que en vez de 'localhost' usamos 'db' (que es el nombre del servicio de base de datos en compose.yml)
     url: jdbc:postgresql://db:5432/clinica_db
     username: postgres
     password: adminpassword
