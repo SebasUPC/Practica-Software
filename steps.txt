@@ -1,0 +1,95 @@
+
+🚀 Paso 1: Ejecutar la aplicación localmente con Docker
+Al no tener Java o Maven instalados directamente en las variables de entorno locales de tu máquina, usaremos la magia de Docker. El archivo Dockerfile compilará el código fuente internamente y empaquetará el servidor.
+
+Abre una terminal de PowerShell.
+Accede a la carpeta del proyecto (recuerda que los comandos no destructivos los puedes ejecutar tú):
+
+powershell
+cd c:\Users\Daniel\Documents\UPC\software\clinica-api
+
+Ejecuta el comando para compilar y levantar los contenedores de la API, PostgreSQL y pgAdmin:
+
+powershell
+docker compose up --build
+
+(Esto descargará las imágenes de Postgres y Alpine, compilará el código y levantará los servidores. Sabrás que terminó cuando veas logs de Spring Boot diciendo Started ClinicaApplication in ... seconds).
+
+📊 Paso 2: Conectar y Visualizar la Base de Datos en pgAdmin
+Abre tu navegador de preferencia e ingresa a: http://localhost:8082.
+Inicia sesión con:
+Usuario (Email): admin@examen.com
+Contraseña: admin
+Registra la base de datos de tu clínica:
+Clic derecho en Servers -> Register -> Server...
+En la pestaña General, ingresa como nombre: ClinicaLocal.
+En la pestaña Connection, rellena los siguientes datos exactamente:
+Host name/address: db (Usamos db porque dentro de la red interna de Docker, es el nombre del servicio de base de datos de nuestro compose.yml).
+Port: 5432
+Maintenance database: clinica_db
+Username: postgres
+Password: adminpassword
+Haz clic en Save. ¡Ya podrás expandir las tablas bajo Schemas -> public -> Tables!
+📮 Paso 3: Probar los Endpoints en Postman (Simulación de Caso de Uso)
+Abre Postman y realiza las siguientes peticiones HTTP para simular el registro de un médico, un paciente, programar una cita exitosa, y finalmente desencadenar la regla de negocio para provocar el error de cruce de horario.
+
+1️⃣ Registrar un Paciente
+Método: POST
+URL: http://localhost:8080/api/v1/pacientes
+Body (JSON):
+json
+{
+  "nombre": "Daniel Examen",
+  "dni": "76543210",
+  "email": "daniel@upc.edu.pe"
+}
+Respuesta esperada (201 Created): Devuelve el JSON con el paciente creado y su id: 1.
+2️⃣ Registrar un Médico
+Método: POST
+URL: http://localhost:8080/api/v1/medicos
+Body (JSON):
+json
+{
+  "nombre": "Dr. Gregory House",
+  "especialidad": "Infectología",
+  "email": "house@clinica.com"
+}
+Respuesta esperada (201 Created): Devuelve el médico registrado con su id: 1.
+3️⃣ Programar una Cita Médica (Cita Exitosa)
+Método: POST
+URL: http://localhost:8080/api/v1/citas
+Body (JSON):
+json
+{
+  "pacienteId": 1,
+  "medicoId": 1,
+  "fechaHora": "2026-06-20T10:00:00",
+  "motivo": "Consulta general por síntomas respiratorios"
+}
+Respuesta esperada (201 Created): Registra la cita, asigna el estado PENDIENTE y retorna la relación completa mapeada en DTO.
+4️⃣ PROBAR LA REGLA DE NEGOCIO (Generación de Conflicto de Horario)
+Ahora intentemos registrar otra cita para el mismo paciente (o el mismo médico) en la misma fecha y hora para validar si el backend de verdad bloquea la operación y responde adecuadamente.
+
+Método: POST
+URL: http://localhost:8080/api/v1/citas
+Body (JSON):
+json
+{
+  "pacienteId": 1,
+  "medicoId": 1,
+  "fechaHora": "2026-06-20T10:00:00",
+  "motivo": "Segunda opinión médica rápida"
+}
+Respuesta controlada esperada (400 Bad Request):
+json
+{
+  "timestamp": "2026-05-17T14:15:30.123456",
+  "status": 400,
+  "error": "Business Rule Violation",
+  "message": "El paciente Daniel Examen ya cuenta con una cita médica programada para la fecha y hora seleccionada."
+}
+(Si cambias el id de paciente por otro diferente, saltará la regla del médico, indicando que el Dr. Gregory House ya tiene programada una cita a esa hora).
+5️⃣ Cancelar una Cita
+Método: PUT
+URL: http://localhost:8080/api/v1/citas/1/cancelar
+Respuesta esperada (200 OK): Actualiza el estado de la cita a CANCELADA. Si vuelves a intentar reservar para el mismo horario, ahora sí te lo permitirá porque las citas canceladas ya no ocupan disponibilidad.
