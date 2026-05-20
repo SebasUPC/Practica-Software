@@ -1,8 +1,5 @@
-package com.hampcode.clinica.controller;
+package com.hampcode.clinica.medico;
 
-import com.hampcode.clinica.dto.MedicoRequest;
-import com.hampcode.clinica.dto.MedicoResponse;
-import com.hampcode.clinica.service.MedicoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

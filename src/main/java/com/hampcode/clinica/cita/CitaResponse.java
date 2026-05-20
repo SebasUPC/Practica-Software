@@ -1,6 +1,5 @@
-package com.hampcode.clinica.dto;
+package com.hampcode.clinica.cita;
 
-import com.hampcode.clinica.domain.EstadoCita;
 import java.time.LocalDateTime;
 
 /**

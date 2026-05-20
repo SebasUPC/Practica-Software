@@ -1,6 +1,5 @@
-package com.hampcode.clinica.repository;
+package com.hampcode.clinica.medico;
 
-import com.hampcode.clinica.domain.Medico;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.hampcode.clinica.dto;
+package com.hampcode.clinica.paciente;
 
 import jakarta.validation.constraints.*;
 

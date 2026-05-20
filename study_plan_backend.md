@@ -24,10 +24,10 @@ graph TD
 Cuando te den el caso de estudio (ej. "Sistema de Matrícula", "Reserva de Vuelos"), lo primero es identificar los **Entidades (Tablas)** y sus **Relaciones**. 
 
 ### 💡 Código Plantilla: Entidad Principal (`@Entity`)
-Crea tus entidades en el paquete `domain` o `model`. Usa **Lombok** para ahorrar tiempo en el examen.
+Crea tus entidades usando la arquitectura **Package by Feature** (agrupado por funcionalidad), por ejemplo, todo en el paquete `producto`. Usa **Lombok** para ahorrar tiempo en el examen.
 
 ```java
-package com.hampcode.domain;
+package com.hampcode.producto;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -75,9 +75,7 @@ public class Producto {
 Las interfaces de repositorio heredan todos los métodos CRUD básicos. Si tu examen pide búsquedas específicas, usa métodos por convención de nombres o `@Query` con JPQL.
 
 ```java
-package com.hampcode.repository;
-
-import com.hampcode.domain.Producto;
+package com.hampcode.producto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -104,7 +102,7 @@ Para evitar exponer directamente las entidades JPA a la API (lo cual es una mala
 
 ### 📝 Request DTO (Para crear/actualizar)
 ```java
-package com.hampcode.dto;
+package com.hampcode.producto;
 
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -128,7 +126,7 @@ public record ProductoRequest(
 
 ### ✉️ Response DTO (Para devolver al cliente)
 ```java
-package com.hampcode.dto;
+package com.hampcode.producto;
 
 import java.math.BigDecimal;
 
@@ -141,27 +139,25 @@ public record ProductoResponse(
 ) {}
 ```
 
-### 🔄 Mapeador Manual Rápido (Ideal para Examen)
-*Tip para el examen:* Si configurar MapStruct te da problemas de compilación, crea un mapeador manual simple para no perder tiempo.
+### 🔄 Mapeador Automático con MapStruct (Para el Examen)
+Para el examen, se exige usar **MapStruct**. Recuerda configurar las dependencias y el `maven-compiler-plugin` con `lombok-mapstruct-binding` en tu `pom.xml`.
 
 ```java
-package com.hampcode.mapper;
+package com.hampcode.producto;
 
-import com.hampcode.domain.Producto;
-import com.hampcode.dto.ProductoResponse;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-public class ProductoMapper {
+@Mapper(componentModel = "spring")
+public interface ProductoMapper {
     
-    public static ProductoResponse toResponse(Producto entity) {
-        if (entity == null) return null;
-        return new ProductoResponse(
-            entity.getId(),
-            entity.getNombre(),
-            entity.getPrecio(),
-            entity.getStock(),
-            entity.getCategoria() != null ? entity.getCategoria().getNombre() : null
-        );
-    }
+    @Mapping(source = "categoria.nombre", target = "nombreCategoria")
+    ProductoResponse toResponse(Producto entity);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "fechaCreacion", ignore = true)
+    @Mapping(target = "categoria", ignore = true)
+    Producto toEntity(ProductoRequest request);
 }
 ```
 
@@ -171,15 +167,10 @@ public class ProductoMapper {
 Aquí es donde aplicas las reglas del caso de estudio (ej. "no vender si no hay stock", "aplicar descuento si es domingo").
 
 ```java
-package com.hampcode.service;
+package com.hampcode.producto;
 
-import com.hampcode.domain.Producto;
-import com.hampcode.dto.ProductoRequest;
-import com.hampcode.dto.ProductoResponse;
 import com.hampcode.exception.ResourceNotFoundException;
-import com.hampcode.mapper.ProductoMapper;
-import com.hampcode.repository.CategoriaRepository;
-import com.hampcode.repository.ProductoRepository;
+import com.hampcode.exception.ResourceConflictException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -190,27 +181,29 @@ public class ProductoService {
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
+    private final ProductoMapper productoMapper;
 
     @Transactional(readOnly = true)
     public ProductoResponse buscarPorId(Long id) {
         return productoRepository.findById(id)
-                .map(ProductoMapper::toResponse)
+                .map(productoMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
     }
 
     @Transactional
     public ProductoResponse registrarProducto(ProductoRequest request) {
+        // Regla de Negocio: Validar duplicidad para devolver HTTP 409
+        if (productoRepository.existsByNombre(request.nombre())) {
+            throw new ResourceConflictException("El nombre del producto ya está registrado.");
+        }
+
         var categoria = categoriaRepository.findById(request.categoriaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Categoría no encontrada con ID: " + request.categoriaId()));
 
-        Producto producto = Producto.builder()
-                .nombre(request.nombre())
-                .precio(request.precio())
-                .stock(request.stock())
-                .categoria(categoria)
-                .build();
+        Producto producto = productoMapper.toEntity(request);
+        producto.setCategoria(categoria);
 
-        return ProductoMapper.toResponse(productoRepository.save(producto));
+        return productoMapper.toResponse(productoRepository.save(producto));
     }
 }
 ```
@@ -224,11 +217,8 @@ public class ProductoService {
 
 ### 🔌 Controlador REST (`@RestController`)
 ```java
-package com.hampcode.controller;
+package com.hampcode.producto;
 
-import com.hampcode.dto.ProductoRequest;
-import com.hampcode.dto.ProductoResponse;
-import com.hampcode.service.ProductoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -282,7 +272,18 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
-    // 2. Manejo de errores de validación (@Valid) (400 Bad Request)
+    // 2. Manejo de conflicto / duplicidad (409 Conflict)
+    @ExceptionHandler(ResourceConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ResourceConflictException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", "Conflict");
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    // 3. Manejo de errores de validación (@Valid) (400 Bad Request)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, Object> body = new HashMap<>();

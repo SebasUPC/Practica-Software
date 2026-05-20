@@ -1,4 +1,4 @@
-package com.hampcode.clinica.domain;
+package com.hampcode.clinica.cita;
 
 /**
  * Enum EstadoCita que define los estados válidos por los que puede pasar una cita médica.

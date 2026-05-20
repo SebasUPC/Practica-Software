@@ -1,4 +1,4 @@
-package com.hampcode.clinica.dto;
+package com.hampcode.clinica.paciente;
 
 /**
  * DTO representado como Record para retornar los datos de un Paciente al cliente.

@@ -1,4 +1,4 @@
-package com.hampcode.clinica.domain;
+package com.hampcode.clinica.paciente;
 
 import jakarta.persistence.*;
 import lombok.*;

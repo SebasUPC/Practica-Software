@@ -1,15 +1,10 @@
-package com.hampcode.clinica.service;
+package com.hampcode.clinica.cita;
 
-import com.hampcode.clinica.domain.Cita;
-import com.hampcode.clinica.domain.EstadoCita;
-import com.hampcode.clinica.dto.CitaRequest;
-import com.hampcode.clinica.dto.CitaResponse;
 import com.hampcode.clinica.exception.BusinessRuleException;
+import com.hampcode.clinica.exception.ResourceConflictException;
 import com.hampcode.clinica.exception.ResourceNotFoundException;
-import com.hampcode.clinica.mapper.ClinicaMapper;
-import com.hampcode.clinica.repository.CitaRepository;
-import com.hampcode.clinica.repository.MedicoRepository;
-import com.hampcode.clinica.repository.PacienteRepository;
+import com.hampcode.clinica.medico.MedicoRepository;
+import com.hampcode.clinica.paciente.PacienteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +22,7 @@ public class CitaService {
     private final CitaRepository citaRepository;
     private final PacienteRepository pacienteRepository;
     private final MedicoRepository medicoRepository;
+    private final CitaMapper citaMapper;
 
     /**
      * Lista todas las citas de la clínica.
@@ -34,7 +30,7 @@ public class CitaService {
     @Transactional(readOnly = true)
     public List<CitaResponse> listarTodas() {
         return citaRepository.findAll().stream()
-                .map(ClinicaMapper::toCitaResponse)
+                .map(citaMapper::toResponse)
                 .toList();
     }
 
@@ -44,7 +40,7 @@ public class CitaService {
     @Transactional(readOnly = true)
     public CitaResponse buscarPorId(Long id) {
         return citaRepository.findById(id)
-                .map(ClinicaMapper::toCitaResponse)
+                .map(citaMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada con id: " + id));
     }
 
@@ -66,14 +62,13 @@ public class CitaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Médico no encontrado con id: " + request.medicoId()));
 
         // 3. Regla de Negocio 1: Un Paciente no puede tener dos citas a la misma hora (citas activas).
-        // Si el repositorio retorna true (existe cruce), lanzamos una excepción controlada que responderá HTTP 400.
         if (citaRepository.existeCitaPacienteMismaHora(request.pacienteId(), request.fechaHora())) {
-            throw new BusinessRuleException("El paciente " + paciente.getNombre() + " ya cuenta con una cita médica programada para la fecha y hora seleccionada.");
+            throw new ResourceConflictException("El paciente " + paciente.getNombre() + " ya cuenta con una cita médica programada para la fecha y hora seleccionada.");
         }
 
         // 4. Regla de Negocio 2: Un Médico no puede tener dos citas a la misma hora (agenda ocupada).
         if (citaRepository.existeCitaMedicoMismaHora(request.medicoId(), request.fechaHora())) {
-            throw new BusinessRuleException("El médico " + medico.getNombre() + " ya tiene programada una cita para la fecha y hora seleccionada.");
+            throw new ResourceConflictException("El médico " + medico.getNombre() + " ya tiene programada una cita para la fecha y hora seleccionada.");
         }
 
         // 5. Mapear y guardar la cita con el estado inicial PENDIENTE.
@@ -85,7 +80,7 @@ public class CitaService {
                 .estado(EstadoCita.PENDIENTE)
                 .build();
 
-        return ClinicaMapper.toCitaResponse(citaRepository.save(cita));
+        return citaMapper.toResponse(citaRepository.save(cita));
     }
 
     /**
@@ -105,6 +100,6 @@ public class CitaService {
         }
 
         cita.setEstado(EstadoCita.CANCELADA);
-        return ClinicaMapper.toCitaResponse(citaRepository.save(cita));
+        return citaMapper.toResponse(citaRepository.save(cita));
     }
 }

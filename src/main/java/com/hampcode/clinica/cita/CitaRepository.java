@@ -1,7 +1,6 @@
-package com.hampcode.clinica.repository;
+package com.hampcode.clinica.cita;
 
-import com.hampcode.clinica.domain.Cita;
-import com.hampcode.clinica.domain.EstadoCita;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -52,6 +52,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Intercepta violaciones de integridad de datos (Error 409 Conflict).
+     * 
+     * Se activa cuando hay duplicados (ej: DNI ya existe, cruce de horarios).
+     */
+    @ExceptionHandler(ResourceConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ResourceConflictException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value()); // HTTP 409
+        body.put("error", "Conflict");
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    /**
      * 3. Intercepta errores de validación de inputs del cliente (Error 400 Bad Request).
      * 
      * Se activa automáticamente cuando las anotaciones de validación (como @NotBlank, @Size, @Email, @Future) 

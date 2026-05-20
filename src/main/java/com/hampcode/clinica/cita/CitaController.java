@@ -1,8 +1,5 @@
-package com.hampcode.clinica.controller;
+package com.hampcode.clinica.cita;
 
-import com.hampcode.clinica.dto.CitaRequest;
-import com.hampcode.clinica.dto.CitaResponse;
-import com.hampcode.clinica.service.CitaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -43,6 +40,8 @@ public class CitaController {
      * URL: POST http://localhost:8080/api/v1/citas
      * 
      * - @Valid: Valida automáticamente los campos del CitaRequest (ej. que la fechaHora sea en el futuro).
+     * Antes de pasarle este objeto al servicio, ejecútale las validaciones del DTO (como @NotBlank o @Future)". 
+     * Si los datos son inválidos, Spring cancela la petición de inmediato en el controlador y lanza una excepción.
      */
     @PostMapping
     public ResponseEntity<CitaResponse> registrar(@Valid @RequestBody CitaRequest request) {

@@ -1,12 +1,7 @@
-package com.hampcode.clinica.service;
+package com.hampcode.clinica.medico;
 
-import com.hampcode.clinica.domain.Medico;
-import com.hampcode.clinica.dto.MedicoRequest;
-import com.hampcode.clinica.dto.MedicoResponse;
-import com.hampcode.clinica.exception.BusinessRuleException;
+import com.hampcode.clinica.exception.ResourceConflictException;
 import com.hampcode.clinica.exception.ResourceNotFoundException;
-import com.hampcode.clinica.mapper.ClinicaMapper;
-import com.hampcode.clinica.repository.MedicoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +15,7 @@ import java.util.List;
 public class MedicoService {
 
     private final MedicoRepository medicoRepository;
+    private final MedicoMapper medicoMapper;
 
     /**
      * Lista todos los médicos registrados.
@@ -27,7 +23,7 @@ public class MedicoService {
     @Transactional(readOnly = true)
     public List<MedicoResponse> listarTodos() {
         return medicoRepository.findAll().stream()
-                .map(ClinicaMapper::toMedicoResponse)
+                .map(medicoMapper::toResponse)
                 .toList();
     }
 
@@ -37,7 +33,7 @@ public class MedicoService {
     @Transactional(readOnly = true)
     public MedicoResponse buscarPorId(Long id) {
         return medicoRepository.findById(id)
-                .map(ClinicaMapper::toMedicoResponse)
+                .map(medicoMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Médico no encontrado con id: " + id));
     }
 
@@ -46,12 +42,11 @@ public class MedicoService {
      */
     @Transactional
     public MedicoResponse registrar(MedicoRequest request) {
-        // Regla de Negocio: Evitar emails médicos duplicados
         if (medicoRepository.existsByEmail(request.email())) {
-            throw new BusinessRuleException("El email ingresado ya está registrado por otro médico.");
+            throw new ResourceConflictException("El email ingresado ya está registrado por otro médico.");
         }
         
-        Medico medico = ClinicaMapper.toMedicoEntity(request);
-        return ClinicaMapper.toMedicoResponse(medicoRepository.save(medico));
+        Medico medico = medicoMapper.toEntity(request);
+        return medicoMapper.toResponse(medicoRepository.save(medico));
     }
 }

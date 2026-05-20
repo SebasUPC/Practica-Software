@@ -1,4 +1,4 @@
-package com.hampcode.clinica.dto;
+package com.hampcode.clinica.medico;
 
 /**
  * Record DTO inmutable utilizado para responder con los datos limpios de un Médico.
