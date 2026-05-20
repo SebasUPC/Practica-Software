@@ -35,12 +35,12 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
      * ¿Por qué usamos @Query con JPQL?
      * JPQL (Java Persistence Query Language) opera sobre las clases de Java y sus relaciones en vez de las tablas SQL crudas.
      * - `c.paciente.id` navega automáticamente por la relación ManyToOne de Cita hacia la clase Paciente.
-     * - `c.estado != com.hampcode.clinica.domain.EstadoCita.CANCELADA` nos asegura que si la cita previa 
+     * - `c.estado != com.hampcode.clinica.cita.EstadoCita.CANCELADA` nos asegura que si la cita previa 
      *   fue CANCELADA, ese horario se considere nuevamente LIBRE para que el paciente pueda reservar otra.
      * 
      * @Param("pacienteId") mapea el parámetro del método Java a `:pacienteId` dentro de la consulta JPQL.
      */
-    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.paciente.id = :pacienteId AND c.fechaHora = :fechaHora AND c.estado != com.hampcode.clinica.domain.EstadoCita.CANCELADA")
+    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.paciente.id = :pacienteId AND c.fechaHora = :fechaHora AND c.estado != com.hampcode.clinica.cita.EstadoCita.CANCELADA")
     boolean existeCitaPacienteMismaHora(
         @Param("pacienteId") Long pacienteId, 
         @Param("fechaHora") LocalDateTime fechaHora
@@ -52,7 +52,7 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
      * Funciona de forma análoga a la regla de paciente. Si el médico tiene una cita activa (PENDIENTE o COMPLETADA) 
      * en esa fecha y hora, no puede ser reservado por otro paciente. Si la cita fue CANCELADA, la hora se libera.
      */
-    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.medico.id = :medicoId AND c.fechaHora = :fechaHora AND c.estado != com.hampcode.clinica.domain.EstadoCita.CANCELADA")
+    @Query("SELECT COUNT(c) > 0 FROM Cita c WHERE c.medico.id = :medicoId AND c.fechaHora = :fechaHora AND c.estado != com.hampcode.clinica.cita.EstadoCita.CANCELADA")
     boolean existeCitaMedicoMismaHora(
         @Param("medicoId") Long medicoId, 
         @Param("fechaHora") LocalDateTime fechaHora
